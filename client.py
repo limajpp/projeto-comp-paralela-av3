@@ -59,13 +59,16 @@ def iniciar_cliente():
             for i, conn in enumerate(conexoes):
                 inicio_fatia = i * tamanho_fatia
                 fim_fatia = N if i == num_servers - 1 else (i + 1) * tamanho_fatia
+                print(f"    [>] Enviando FATIA de A (Linhas {inicio_fatia} a {fim_fatia-1}) e MATRIZ B inteira ({N}x{N}) para Servidor {i+1}")
                 pacote = {'sub_A': matriz_A[inicio_fatia:fim_fatia], 'B': matriz_B}
                 enviar_dado(conn, pacote)
             
             matriz_C_distribuida = []
-            for conn in conexoes:
+            for i, conn in enumerate(conexoes):
                 enviar_dado(conn, "SINCRONISMO_OK")
-                matriz_C_distribuida.extend(receber_dado(conn))
+                resultado_parcial = receber_dado(conn)
+                print(f"    [<] Resultado recebido do Servidor {i+1} (Calculou {len(resultado_parcial)} linhas). Concatenando na Matriz C...")
+                matriz_C_distribuida.extend(resultado_parcial)
                 conn.close()
                 
             tempo_distribuido = time.time() - inicio_distribuido
