@@ -8,7 +8,7 @@ from utils.rede import receber_dado, enviar_dado
 load_dotenv()
 
 HOST = os.getenv("HOST")
-PORTA_BASE = 5001
+PORTA_BASE = 5000
 
 def _ler_portas_servidores():
     entrada = input("Quantidade de servidores (ex: 2): ").strip()
@@ -18,10 +18,10 @@ def _ler_portas_servidores():
     return list(range(PORTA_BASE, PORTA_BASE + quantidade))
 
 def _ler_tamanhos_teste():
-    entrada = input("Tamanhos de teste (ex: 100,250,500): ").strip()
+    entrada = input("Tamanhos de teste (ex: 100, 250, 500): ").strip()
     if not entrada:
         return [100, 250, 500, 750, 1000]
-    return [int(valor.strip()) for valor in entrada.split(",") if valor.strip()]
+    return [int(valor.strip()) for valor in entrada.split(", ") if valor.strip()]
 
 def iniciar_cliente():
     portas_servidores = _ler_portas_servidores()
