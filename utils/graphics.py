@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 def gerar_graficos():
-    pasta_dados = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'utils', 'data')
+    pasta_dados = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     os.makedirs(pasta_dados, exist_ok=True) 
     
     caminho_csv = os.path.join(pasta_dados, 'resultados_benchmark.csv')

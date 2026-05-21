@@ -100,7 +100,7 @@ def iniciar_cliente():
     print(df.to_string(index=False))
     
     print(f"\n[!] Dados exportados para 'utils/data/resultados_benchmark.csv'.")
-    print("[!] Execute 'python graphics.py' para gerar os gráficos visuais.")
+    print("[!] Execute 'python utils/graphics.py' para gerar os gráficos visuais.")
 
 if __name__ == '__main__':
     iniciar_cliente()
