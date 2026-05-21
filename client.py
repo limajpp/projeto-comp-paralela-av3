@@ -1,105 +1,103 @@
 import socket
 import time
 import os
+import pandas as pd
 from dotenv import load_dotenv
 from utils.matrix import gerar_matriz, multiplicacao_serial
 from utils.rede import receber_dado, enviar_dado
 
 load_dotenv()
-
-HOST = os.getenv("HOST")
-PORTA_BASE = 5000
+HOST = os.getenv("HOST", "127.0.0.1")
+PORTA_BASE = 5001
 
 def _ler_portas_servidores():
-    entrada = input("Quantidade de servidores (ex: 2): ").strip()
-    if not entrada:
-        return [5001, 5002]
-    quantidade = int(entrada)
+    entrada = input("Quantidade MÁXIMA de servidores rodando (ex: 4): ").strip()
+    quantidade = int(entrada) if entrada else 4
     return list(range(PORTA_BASE, PORTA_BASE + quantidade))
 
 def _ler_tamanhos_teste():
-    entrada = input("Tamanhos de teste (ex: 100, 250, 500): ").strip()
+    entrada = input("Tamanhos de teste (ex: 100, 250, 500, 750, 1000): ").strip()
     if not entrada:
         return [100, 250, 500, 750, 1000]
-    return [int(valor.strip()) for valor in entrada.split(", ") if valor.strip()]
+    return [int(valor.strip()) for valor in entrada.split(",") if valor.strip()]
 
 def iniciar_cliente():
-    portas_servidores = _ler_portas_servidores()
+    portas_disponiveis = _ler_portas_servidores()
     tamanhos_teste = _ler_tamanhos_teste()
     resultados_tabela = [] 
 
-    print(">>> INICIANDO BATERIA DE TESTES (SERIAL VS DISTRIBUÍDO) <<<\n")
+    print("\n>>> INICIANDO BATERIA MASSIVA DE TESTES (BENCHMARK) <<<")
     
     for N in tamanhos_teste:
         print("\n" + "="*50)
-        print(f"=== TESTE PARA MATRIZ {N}x{N} ===")
+        print(f"=== TESTANDO MATRIZ {N}x{N} ===")
         print("="*50)
         
-        print(f"Gerando matrizes A e B ({N}x{N})...")
+        print("Gerando matrizes A e B...")
         matriz_A = gerar_matriz(N)
         matriz_B = gerar_matriz(N)
         
-        print("\n>>> Iniciando cálculo SERIAL (Referência)...")
+        print("Calculando Baseline SERIAL (Referência)...")
         inicio_serial = time.time()
-        resultado_serial = multiplicacao_serial(matriz_A, matriz_B, N)
+        multiplicacao_serial(matriz_A, matriz_B, N)
         tempo_serial = time.time() - inicio_serial
         print(f"Tempo SERIAL: {tempo_serial:.4f} segundos")
 
-        print("\n>>> Iniciando processamento DISTRIBUÍDO (Sockets)...")
-        inicio_distribuido = time.time()
-        
-        num_servers = len(portas_servidores)
-        tamanho_fatia = N // num_servers
-        conexoes = []
-        
-        for porta in portas_servidores:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((HOST, porta))
-            conexoes.append(s)
-            print(f"[+] Conectado ao servidor na porta {porta}")
-        
-        for i, conn in enumerate(conexoes):
-            inicio_fatia = i * tamanho_fatia
-            fim_fatia = N if i == num_servers - 1 else (i + 1) * tamanho_fatia
-            sub_A = matriz_A[inicio_fatia:fim_fatia]
+        for num_servers in range(1, len(portas_disponiveis) + 1):
+            print(f"\n[>] Executando com {num_servers} Servidor(es)...")
+            portas_ativas = portas_disponiveis[:num_servers]
             
-            pacote = {'sub_A': sub_A, 'B': matriz_B}
-            enviar_dado(conn, pacote)
-            print(f"[>] Dados enviados ao Servidor {i+1} (Linhas {inicio_fatia} a {fim_fatia-1})")
-        
-        print("\nAguardando o cálculo dos servidores na rede...")
-        
-        matriz_C_distribuida = []
-        
-        for i, conn in enumerate(conexoes):
-            enviar_dado(conn, "SINCRONISMO_OK")
-            sub_C = receber_dado(conn)
-            matriz_C_distribuida.extend(sub_C)
-            print(f"[<] Resultado recebido do Servidor {i+1} e concatenado.")
-            conn.close()
+            inicio_distribuido = time.time()
+            tamanho_fatia = N // num_servers
+            conexoes = []
             
-        tempo_distribuido = time.time() - inicio_distribuido
-        
-        print(f"\nMatriz C gerada com sucesso! Possui {len(matriz_C_distribuida)} linhas.")
-        print(f"Tempo DISTRIBUÍDO: {tempo_distribuido:.4f} segundos")
+            for porta in portas_ativas:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.connect((HOST, porta))
+                conexoes.append(s)
+            
+            for i, conn in enumerate(conexoes):
+                inicio_fatia = i * tamanho_fatia
+                fim_fatia = N if i == num_servers - 1 else (i + 1) * tamanho_fatia
+                pacote = {'sub_A': matriz_A[inicio_fatia:fim_fatia], 'B': matriz_B}
+                enviar_dado(conn, pacote)
+            
+            matriz_C_distribuida = []
+            for conn in conexoes:
+                enviar_dado(conn, "SINCRONISMO_OK")
+                matriz_C_distribuida.extend(receber_dado(conn))
+                conn.close()
+                
+            tempo_distribuido = time.time() - inicio_distribuido
+            
+            speedup = tempo_serial / tempo_distribuido if tempo_distribuido > 0 else 0
+            eficiencia = speedup / num_servers
+            
+            print(f"[<] Tempo Distribuído: {tempo_distribuido:.4f}s | Speedup: {speedup:.2f}x | Eficiência: {eficiencia:.2f}")
+            
+            resultados_tabela.append({
+                'N': N, 
+                'Workers': num_servers, 
+                'Tempo_Serial': tempo_serial, 
+                'Tempo_Distribuido': tempo_distribuido, 
+                'Speedup': speedup, 
+                'Eficiencia': eficiencia
+            })
 
-        consistente = resultado_serial == matriz_C_distribuida
-        status_safety = "Sim" if consistente else "Não"
-        print(f"Resultados Consistentes (Safety)? {status_safety}")
-        
-        speedup = tempo_serial / tempo_distribuido if tempo_distribuido > 0 else 0
-        print(f"Speedup Alcançado: {speedup:.2f}x")
-        
-        resultados_tabela.append((N, tempo_serial, tempo_distribuido, speedup, status_safety))
-
-    print("\n\n" + "#"*95)
+    pasta_saida = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'utils', 'data')
+    os.makedirs(pasta_saida, exist_ok=True)
+    
+    caminho_csv = os.path.join(pasta_saida, 'resultados_benchmark.csv')
+    df = pd.DataFrame(resultados_tabela)
+    df.to_csv(caminho_csv, index=False)
+    
+    print("\n" + "#"*95)
     print("### RESUMO FINAL: BATERIA DE TESTES (BENCHMARK) ###")
     print("#"*95)
-    print(f"{'Matriz (NxN)':<15} | {'Tempo Serial (s)':<20} | {'Tempo Distribuído (s)':<25} | {'Speedup':<10} | {'Safety'}")
-    print("-" * 95)
-    for res in resultados_tabela:
-        n, t_ser, t_dist, spd, saf = res
-        print(f"{n:<15} | {t_ser:<20.4f} | {t_dist:<25.4f} | {spd:<9.2f}x | {saf}")
+    print(df.to_string(index=False))
+    
+    print(f"\n[!] Dados exportados para 'utils/data/resultados_benchmark.csv'.")
+    print("[!] Execute 'python graphics.py' para gerar os gráficos visuais.")
 
 if __name__ == '__main__':
     iniciar_cliente()
