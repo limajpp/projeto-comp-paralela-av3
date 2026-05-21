@@ -1,1 +1,14 @@
-python-dotenv
+contourpy       
+cycler          
+fonttools       
+kiwisolver      
+matplotlib      
+numpy           
+packaging       
+pandas          
+pillow          
+pip             
+pyparsing       
+python-dateutil 
+python-dotenv   
+six             
