@@ -1,21 +1,13 @@
+import os
 import socket
 import sys
+from dotenv import load_dotenv
 from utils.rede import receber_dado, enviar_dado
-
-def multiplicar_submatriz(sub_A, B):
-    """Realiza a multiplicação da submatriz de A com a matriz B."""
-    tamanho_colunas_B = len(B[0])
-    resultado = []
-    for linha_A in sub_A:
-        linha_resultado = [0.0] * tamanho_colunas_B
-        for j in range(tamanho_colunas_B):
-            for k in range(len(linha_A)):
-                linha_resultado[j] += linha_A[k] * B[k][j]
-        resultado.append(linha_resultado)
-    return resultado
+from utils.matrix import multiplicar_submatriz
 
 def iniciar_servidor(porta):
-    HOST = '127.0.0.1'
+    load_dotenv()
+    HOST = os.getenv('HOST')
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

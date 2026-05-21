@@ -1,31 +1,36 @@
 import socket
 import time
-import random
+import os
+from dotenv import load_dotenv
+from utils.matrix import gerar_matriz, multiplicacao_serial
 from utils.rede import receber_dado, enviar_dado
 
-HOST = '127.0.0.1'
-PORTAS_SERVIDORES = [5001, 5002] 
-TAMANHOS_TESTE = [100, 250, 500, 750, 1000] 
+load_dotenv()
 
-def gerar_matriz(tamanho):
-    """Gera matriz com valores aleatórios."""
-    return [[random.random() for _ in range(tamanho)] for _ in range(tamanho)]
+HOST = os.getenv("HOST")
+PORTA_BASE = 5001
 
-def multiplicacao_serial(A, B, tamanho):
-    """Multiplicação clássica (1 núcleo) para servir de baseline."""
-    C = [[0.0 for _ in range(tamanho)] for _ in range(tamanho)]
-    for i in range(tamanho):
-        for j in range(tamanho):
-            for k in range(tamanho):
-                C[i][j] += A[i][k] * B[k][j]
-    return C
+def _ler_portas_servidores():
+    entrada = input("Quantidade de servidores (ex: 2): ").strip()
+    if not entrada:
+        return [5001, 5002]
+    quantidade = int(entrada)
+    return list(range(PORTA_BASE, PORTA_BASE + quantidade))
+
+def _ler_tamanhos_teste():
+    entrada = input("Tamanhos de teste (ex: 100,250,500): ").strip()
+    if not entrada:
+        return [100, 250, 500, 750, 1000]
+    return [int(valor.strip()) for valor in entrada.split(",") if valor.strip()]
 
 def iniciar_cliente():
+    portas_servidores = _ler_portas_servidores()
+    tamanhos_teste = _ler_tamanhos_teste()
     resultados_tabela = [] 
 
     print(">>> INICIANDO BATERIA DE TESTES (SERIAL VS DISTRIBUÍDO) <<<\n")
     
-    for N in TAMANHOS_TESTE:
+    for N in tamanhos_teste:
         print("\n" + "="*50)
         print(f"=== TESTE PARA MATRIZ {N}x{N} ===")
         print("="*50)
@@ -43,11 +48,11 @@ def iniciar_cliente():
         print("\n>>> Iniciando processamento DISTRIBUÍDO (Sockets)...")
         inicio_distribuido = time.time()
         
-        num_servers = len(PORTAS_SERVIDORES)
+        num_servers = len(portas_servidores)
         tamanho_fatia = N // num_servers
         conexoes = []
         
-        for porta in PORTAS_SERVIDORES:
+        for porta in portas_servidores:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((HOST, porta))
             conexoes.append(s)
