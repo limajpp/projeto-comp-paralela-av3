@@ -8,14 +8,14 @@ def enviar_dado(conexao, dado):
 
 def receber_dado(conexao):
     """Lê o tamanho no cabeçalho e reagrupa os pacotes até formar o dado completo."""
-    raw_msglen = receber_todos_bytes(conexao, 4)
+    raw_msglen = _receber_todos_bytes(conexao, 4)
     if not raw_msglen:
         return None
     msglen = struct.unpack('>I', raw_msglen)[0]
-    dado_bytes = receber_todos_bytes(conexao, msglen)
+    dado_bytes = _receber_todos_bytes(conexao, msglen)
     return pickle.loads(dado_bytes)
 
-def receber_todos_bytes(conexao, n):
+def _receber_todos_bytes(conexao, n):
     """Garante a leitura exata de 'n' bytes da rede."""
     dados = bytearray()
     while len(dados) < n:
