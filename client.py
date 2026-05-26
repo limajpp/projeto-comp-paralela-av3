@@ -36,6 +36,14 @@ def iniciar_cliente():
         print("Gerando matrizes A e B...")
         matriz_A = gerar_matriz(N)
         matriz_B = gerar_matriz(N)
+
+        # Print das matrizes que vão ser multiplicadas para instâncias até 5x5 apenas para proof of concept.
+        if N <= 5:
+            print("\n[!] MODO DEMONSTRAÇÃO ATIVADO (N <= 5)")
+            print("--- MATRIZ A (Será fatiada) ---")
+            for linha in matriz_A: print([round(x, 2) for x in linha])
+            print("--- MATRIZ B (Enviada inteira) ---")
+            for linha in matriz_B: print([round(x, 2) for x in linha])
         
         print("Calculando Baseline SERIAL (Referência)...")
         inicio_serial = time.time()
@@ -70,6 +78,11 @@ def iniciar_cliente():
                 print(f"    [<] Resultado recebido do Servidor {i+1} (Calculou {len(resultado_parcial)} linhas). Concatenando na Matriz C...")
                 matriz_C_distribuida.extend(resultado_parcial)
                 conn.close()
+
+            # Print do resultado da multiplicação para instâncias até 5x5 apenas para proof of concept.
+            if N <= 5:
+                print("\n--- RESULTADO FINAL: MATRIZ C DISTRIBUÍDA ---")
+                for linha in matriz_C_distribuida: print([round(x, 2) for x in linha])
                 
             tempo_distribuido = time.time() - inicio_distribuido
             
